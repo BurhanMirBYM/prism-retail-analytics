@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PRISM — Retail Insights &amp; Sales Metrics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="logo"><h1>PRISM</h1></div>
+  <p class="eyebrow">Retail Insights &amp; Sales Metrics</p>
+  <p class="tagline">Real SQL. Real joins. Real numbers.</p>
+</header>
+
+<main class="wrap">
+
+  <section class="kpis" id="kpiRow">
+    <div class="kpi"><span class="kpi__label">Revenue</span><span class="kpi__value" id="kpiRevenue">—</span></div>
+    <div class="kpi"><span class="kpi__label">Profit</span><span class="kpi__value" id="kpiProfit">—</span></div>
+    <div class="kpi"><span class="kpi__label">Orders</span><span class="kpi__value" id="kpiOrders">—</span></div>
+    <div class="kpi"><span class="kpi__label">Avg Order Value</span><span class="kpi__value" id="kpiAOV">—</span></div>
+  </section>
+
+  <section class="grid">
+    <div class="panel panel--wide">
+      <h2>Monthly revenue &amp; profit</h2>
+      <p class="panel__sub">GROUP BY strftime('%Y-%m', order_date)</p>
+      <div class="chart-frame"><canvas id="trendChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <h2>Revenue by category</h2>
+      <p class="panel__sub">JOIN order_items ↔ products</p>
+      <div class="chart-frame"><canvas id="categoryChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <h2>Performance by region</h2>
+      <p class="panel__sub">JOIN order_items ↔ orders</p>
+      <div class="chart-frame"><canvas id="regionChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <h2>Top products</h2>
+      <p class="panel__sub">ORDER BY revenue DESC LIMIT 10</p>
+      <table class="data-table" id="topProductsTable"><thead><tr><th>Product</th><th>Category</th><th>Revenue</th><th>Units</th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <div class="panel">
+      <h2>Top customers</h2>
+      <p class="panel__sub">JOIN customers ↔ orders ↔ order_items</p>
+      <table class="data-table" id="topCustomersTable"><thead><tr><th>Customer</th><th>Segment</th><th>Orders</th><th>Revenue</th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <div class="panel">
+      <h2>Customer segments (RFM)</h2>
+      <p class="panel__sub">NTILE(4) OVER (...) on Recency / Frequency / Monetary</p>
+      <div class="chart-frame chart-frame--small"><canvas id="rfmChart"></canvas></div>
+    </div>
+  </section>
+
+  <section class="panel panel--full" id="dataManagementPanel">
+    <div class="panel__header flex-header">
+      <div>
+        <h2>Data Management &amp; Entry</h2>
+        <p class="panel__sub">Insert new transactions, add products/customers, generate sample data, or bulk import CSVs.</p>
+      </div>
+      <div class="quick-actions">
+        <button type="button" class="btn btn--accent" id="genSampleDataBtn">⚡ Generate Sample Sales</button>
+        <button type="button" class="btn btn--outline" id="resetDbBtn">🔄 Reset Dataset</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tab-order">Record Sale / Order</button>
+      <button class="tab-btn" data-tab="tab-product">Add Product</button>
+      <button class="tab-btn" data-tab="tab-customer">Add Customer</button>
+      <button class="tab-btn" data-tab="tab-csv">Bulk CSV Import</button>
+    </div>
+
+    <div class="tab-content active" id="tab-order">
+      <form id="addOrderForm" class="form-grid">
+        <div class="form-group">
+          <label for="orderCustomer">Customer</label>
+          <select id="orderCustomer" required><option value="">Select customer...</option></select>
+        </div>
+        <div class="form-group">
+          <label for="orderProduct">Product</label>
+          <select id="orderProduct" required><option value="">Select product...</option></select>
+        </div>
+        <div class="form-group">
+          <label for="orderQty">Quantity</label>
+          <input type="number" id="orderQty" min="1" value="1" required />
+        </div>
+        <div class="form-group">
+          <label for="orderDiscount">Discount (0.0 to 0.5)</label>
+          <input type="number" id="orderDiscount" step="0.05" min="0" max="0.5" value="0.0" />
+        </div>
+        <div class="form-group form-group--full">
+          <button type="submit" class="btn">Record Transaction</button>
+          <span class="form-msg" id="orderFormMsg"></span>
+        </div>
+      </form>
+    </div>
+
+    <div class="tab-content" id="tab-product">
+      <form id="addProductForm" class="form-grid">
+        <div class="form-group">
+          <label for="prodName">Product Name</label>
+          <input type="text" id="prodName" placeholder="e.g. Ergonomic Keyboard" required />
+        </div>
+        <div class="form-group">
+          <label for="prodCategory">Category</label>
+          <select id="prodCategory" required>
+            <option value="Technology">Technology</option>
+            <option value="Furniture">Furniture</option>
+            <option value="Office Supplies">Office Supplies</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="prodSubCategory">Sub-Category</label>
+          <input type="text" id="prodSubCategory" placeholder="e.g. Accessories" required />
+        </div>
+        <div class="form-group">
+          <label for="prodPrice">Unit Price ($)</label>
+          <input type="number" id="prodPrice" step="0.01" min="0.01" placeholder="49.99" required />
+        </div>
+        <div class="form-group form-group--full">
+          <button type="submit" class="btn">Save Product</button>
+          <span class="form-msg" id="productFormMsg"></span>
+        </div>
+      </form>
+    </div>
+
+    <div class="tab-content" id="tab-customer">
+      <form id="addCustomerForm" class="form-grid">
+        <div class="form-group">
+          <label for="custName">Customer Full Name</label>
+          <input type="text" id="custName" placeholder="e.g. Sarah Connor" required />
+        </div>
+        <div class="form-group">
+          <label for="custSegment">Segment</label>
+          <select id="custSegment" required>
+            <option value="Consumer">Consumer</option>
+            <option value="Corporate">Corporate</option>
+            <option value="Home Office">Home Office</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="custRegion">Region</label>
+          <select id="custRegion" required>
+            <option value="North">North</option>
+            <option value="South">South</option>
+            <option value="East">East</option>
+            <option value="West">West</option>
+          </select>
+        </div>
+        <div class="form-group form-group--full">
+          <button type="submit" class="btn">Add Customer</button>
+          <span class="form-msg" id="customerFormMsg"></span>
+        </div>
+      </form>
+    </div>
+
+    <div class="tab-content" id="tab-csv">
+      <form id="importCsvForm" class="form-grid">
+        <div class="form-group form-group--full">
+          <label for="csvTable">Target Table</label>
+          <select id="csvTable" required>
+            <option value="customers">customers (name, segment, region, join_date)</option>
+            <option value="products">products (name, category, sub_category, unit_price)</option>
+            <option value="orders">orders (customer_id, order_date, ship_date, region)</option>
+            <option value="order_items">order_items (order_id, product_id, quantity, discount, sales, profit)</option>
+          </select>
+        </div>
+        <div class="form-group form-group--full">
+          <div class="csv-actions">
+            <label for="csvFile">Upload CSV File or Paste Text Below</label>
+            <button type="button" class="btn btn--secondary" id="loadSampleCsvBtn">📋 Load Sample CSV Template</button>
+          </div>
+          <input type="file" id="csvFile" accept=".csv,text/csv" />
+        </div>
+        <div class="form-group form-group--full">
+          <textarea id="csvText" rows="4" spellcheck="false" placeholder="name,segment,region,join_date&#10;Jane Doe,Consumer,East,2024-05-01"></textarea>
+        </div>
+        <div class="form-group form-group--full">
+          <button type="submit" class="btn">Import CSV Data</button>
+          <span class="form-msg" id="csvFormMsg"></span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="panel panel--full">
+    <h2>SQL Playground</h2>
+    <p class="panel__sub">Any read-only SELECT against the live database. Try: <code>SELECT category, COUNT(*) FROM products GROUP BY category</code></p>
+    <textarea id="sqlInput" rows="3" spellcheck="false">SELECT c.region, ROUND(SUM(oi.sales),2) AS revenue
+FROM order_items oi
+JOIN orders o ON o.order_id = oi.order_id
+JOIN customers c ON c.customer_id = o.customer_id
+GROUP BY c.region
+ORDER BY revenue DESC;</textarea>
+    <div class="playground__actions">
+      <button class="btn" id="runQueryBtn" type="button">Run query</button>
+      <span class="playground__msg" id="queryMsg"></span>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table" id="queryResultTable"><thead></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+</main>
+
+<script src="chart.umd.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
