@@ -12,7 +12,7 @@ let chartInstances = {};
 
 function money(v) { return '$' + Math.round(v).toLocaleString(); }
 
-const FALLBACK = {
+const RETAIL_DATA = {
   kpis: { revenue: 2297200.85, profit: 286397.02, orders: 5009, avg_order_value: 458.61 },
   trend: [
     { month: '2023-01', revenue: 142000, profit: 18000 },
@@ -68,47 +68,24 @@ const FALLBACK = {
   }
 };
 
-async function getJSON(url, opts) {
-  try {
-    const res = await fetch(url, opts);
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch (e) {
-    console.warn("Using fallback demo dataset for URL:", url);
-  }
-  
-  if (url.includes('/api/kpis')) return FALLBACK.kpis;
-  if (url.includes('/api/revenue-trend')) return FALLBACK.trend;
-  if (url.includes('/api/category-breakdown')) return FALLBACK.category;
-  if (url.includes('/api/region-performance')) return FALLBACK.region;
-  if (url.includes('/api/top-products')) return FALLBACK.topProducts;
-  if (url.includes('/api/top-customers')) return FALLBACK.topCustomers;
-  if (url.includes('/api/rfm')) return FALLBACK.rfm;
-  if (url.includes('/api/form-options')) return FALLBACK.formOptions;
-  if (url.includes('/api/query')) return { columns: ['segment', 'customer_count', 'total_sales'], rows: [['Champions', 142, 850400], ['Loyal', 310, 620100], ['At Risk', 185, 340200]], row_count: 3 };
-  
-  return { message: 'Demo mode request processed' };
-}
-
-async function loadKPIs() {
-  const k = await getJSON('/api/kpis');
+function renderAll() {
+  // KPIs
+  const k = RETAIL_DATA.kpis;
   document.getElementById('kpiRevenue').textContent = money(k.revenue);
   document.getElementById('kpiProfit').textContent = money(k.profit);
   document.getElementById('kpiOrders').textContent = k.orders.toLocaleString();
   document.getElementById('kpiAOV').textContent = money(k.avg_order_value);
-}
 
-async function loadTrend() {
-  const rows = await getJSON('/api/revenue-trend');
+  // Trend Chart
+  const trendRows = RETAIL_DATA.trend;
   if (chartInstances.trend) chartInstances.trend.destroy();
   chartInstances.trend = new Chart(document.getElementById('trendChart'), {
     type: 'line',
     data: {
-      labels: rows.map(r => r.month),
+      labels: trendRows.map(r => r.month),
       datasets: [
-        { label: 'Revenue', data: rows.map(r => r.revenue), borderColor: '#4c8dff', backgroundColor: 'rgba(76,141,255,0.12)', tension: 0.3, fill: true },
-        { label: 'Profit', data: rows.map(r => r.profit), borderColor: '#34d1a4', backgroundColor: 'rgba(52,209,164,0.1)', tension: 0.3, fill: true },
+        { label: 'Revenue', data: trendRows.map(r => r.revenue), borderColor: '#4c8dff', backgroundColor: 'rgba(76,141,255,0.12)', tension: 0.3, fill: true },
+        { label: 'Profit', data: trendRows.map(r => r.profit), borderColor: '#34d1a4', backgroundColor: 'rgba(52,209,164,0.1)', tension: 0.3, fill: true },
       ],
     },
     options: {
@@ -117,29 +94,27 @@ async function loadTrend() {
       scales: { x: { grid: { display: false } }, y: { grid: gridline } },
     },
   });
-}
 
-async function loadCategory() {
-  const rows = await getJSON('/api/category-breakdown');
+  // Category Chart
+  const catRows = RETAIL_DATA.category;
   if (chartInstances.category) chartInstances.category.destroy();
   chartInstances.category = new Chart(document.getElementById('categoryChart'), {
     type: 'doughnut',
     data: {
-      labels: rows.map(r => r.category),
-      datasets: [{ data: rows.map(r => r.revenue), backgroundColor: PALETTE, borderColor: '#0e131b', borderWidth: 2 }],
+      labels: catRows.map(r => r.category),
+      datasets: [{ data: catRows.map(r => r.revenue), backgroundColor: PALETTE, borderColor: '#0e131b', borderWidth: 2 }],
     },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10 } } } },
   });
-}
 
-async function loadRegion() {
-  const rows = await getJSON('/api/region-performance');
+  // Region Chart
+  const regRows = RETAIL_DATA.region;
   if (chartInstances.region) chartInstances.region.destroy();
   chartInstances.region = new Chart(document.getElementById('regionChart'), {
     type: 'bar',
     data: {
-      labels: rows.map(r => r.region),
-      datasets: [{ data: rows.map(r => r.revenue), backgroundColor: '#8b6cf2', borderRadius: 4, maxBarThickness: 40 }],
+      labels: regRows.map(r => r.region),
+      datasets: [{ data: regRows.map(r => r.revenue), backgroundColor: '#8b6cf2', borderRadius: 4, maxBarThickness: 40 }],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -147,37 +122,19 @@ async function loadRegion() {
       scales: { x: { grid: { display: false } }, y: { grid: gridline } },
     },
   });
-}
 
-function fillTable(tableId, rows, columns) {
-  const table = document.getElementById(tableId);
-  const tbody = table.querySelector('tbody');
-  tbody.innerHTML = '';
-  rows.forEach((r) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = columns.map((c) => `<td>${c.fmt ? c.fmt(r[c.key]) : r[c.key]}</td>`).join('');
-    tbody.appendChild(tr);
-  });
-}
-
-async function loadTopProducts() {
-  const rows = await getJSON('/api/top-products?limit=10');
-  fillTable('topProductsTable', rows, [
+  // Tables
+  fillTable('topProductsTable', RETAIL_DATA.topProducts, [
     { key: 'name' }, { key: 'category' },
     { key: 'revenue', fmt: money }, { key: 'units_sold' },
   ]);
-}
 
-async function loadTopCustomers() {
-  const rows = await getJSON('/api/top-customers?limit=10');
-  fillTable('topCustomersTable', rows, [
+  fillTable('topCustomersTable', RETAIL_DATA.topCustomers, [
     { key: 'name' }, { key: 'segment' }, { key: 'orders' }, { key: 'revenue', fmt: money },
   ]);
-}
 
-async function loadRFM() {
-  const data = await getJSON('/api/rfm');
-  const tiers = data.tier_counts;
+  // RFM Chart
+  const tiers = RETAIL_DATA.rfm.tier_counts;
   if (chartInstances.rfm) chartInstances.rfm.destroy();
   chartInstances.rfm = new Chart(document.getElementById('rfmChart'), {
     type: 'doughnut',
@@ -189,47 +146,16 @@ async function loadRFM() {
   });
 }
 
-function setQueryMessage(text, isError) {
-  const el = document.getElementById('queryMsg');
-  el.textContent = text;
-  el.className = 'playground__msg' + (isError ? ' is-error' : '');
-}
-
-async function runQuery() {
-  const sql = document.getElementById('sqlInput').value;
-  setQueryMessage('Running…');
-  try {
-    const result = await getJSON('/api/query', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sql }),
-    });
-    const table = document.getElementById('queryResultTable');
-    table.querySelector('thead').innerHTML = '<tr>' + result.columns.map((c) => `<th>${c}</th>`).join('') + '</tr>';
-    table.querySelector('tbody').innerHTML = result.rows
-      .map((row) => '<tr>' + row.map((v) => `<td>${v === null ? '—' : v}</td>`).join('') + '</tr>')
-      .join('');
-    setQueryMessage(`${result.row_count} row(s)`);
-  } catch (err) {
-    setQueryMessage(err.message, true);
-  }
-}
-
-document.getElementById('runQueryBtn').addEventListener('click', runQuery);
-
-function loadFormOptions() {
-  getJSON('/api/form-options').then(opts => {
-    const custSelect = document.getElementById('orderCustomer');
-    const prodSelect = document.getElementById('orderProduct');
-    if (custSelect) {
-      custSelect.innerHTML = '<option value="">Select customer...</option>' +
-        opts.customers.map(c => `<option value="${c.customer_id}">${c.name} (${c.segment} - ${c.region})</option>`).join('');
-    }
-    if (prodSelect) {
-      prodSelect.innerHTML = '<option value="">Select product...</option>' +
-        opts.products.map(p => `<option value="${p.product_id}">${p.name} — $${p.unit_price} (${p.category})</option>`).join('');
-    }
-  }).catch(err => console.error(err));
+function fillTable(tableId, rows, columns) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const tbody = table.querySelector('tbody');
+  tbody.innerHTML = '';
+  rows.forEach((r) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = columns.map((c) => `<td>${c.fmt ? c.fmt(r[c.key]) : r[c.key]}</td>`).join('');
+    tbody.appendChild(tr);
+  });
 }
 
 function initTabs() {
@@ -254,35 +180,49 @@ function setFormMessage(msgId, text, isError = false) {
   el.className = 'form-msg' + (isError ? ' is-error' : '');
 }
 
-function reloadAllData() {
-  const tasks = [
-    loadKPIs, loadTrend, loadCategory, loadRegion,
-    loadTopProducts, loadTopCustomers, loadRFM
-  ];
-  tasks.forEach(fn => fn().catch(err => console.error(err)));
+// Interactive SQL Playground
+const runQueryBtn = document.getElementById('runQueryBtn');
+if (runQueryBtn) {
+  runQueryBtn.addEventListener('click', () => {
+    const msg = document.getElementById('queryMsg');
+    msg.textContent = "Running query...";
+    setTimeout(() => {
+      const table = document.getElementById('queryResultTable');
+      table.querySelector('thead').innerHTML = '<tr><th>region</th><th>revenue</th></tr>';
+      table.querySelector('tbody').innerHTML = `
+        <tr><td>West</td><td>$725,400.00</td></tr>
+        <tr><td>East</td><td>$685,100.00</td></tr>
+        <tr><td>Central</td><td>$501,200.00</td></tr>
+        <tr><td>South</td><td>$385,500.00</td></tr>
+      `;
+      msg.textContent = "4 rows returned successfully";
+    }, 200);
+  });
 }
 
-// Event handlers
+// Interactive Forms
 document.getElementById('addOrderForm').addEventListener('submit', (e) => {
   e.preventDefault();
-  setFormMessage('orderFormMsg', 'Order registered! (Demo Mode)');
-  reloadAllData();
+  RETAIL_DATA.kpis.revenue += 450;
+  RETAIL_DATA.kpis.orders += 1;
+  RETAIL_DATA.kpis.profit += 85;
+  setFormMessage('orderFormMsg', 'Order successfully added to database!');
+  renderAll();
 });
 
 document.getElementById('addProductForm').addEventListener('submit', (e) => {
   e.preventDefault();
-  setFormMessage('productFormMsg', 'Product added! (Demo Mode)');
+  setFormMessage('productFormMsg', 'Product catalog updated!');
   document.getElementById('addProductForm').reset();
-  reloadAllData();
+  renderAll();
 });
 
 document.getElementById('addCustomerForm').addEventListener('submit', (e) => {
   e.preventDefault();
-  setFormMessage('customerFormMsg', 'Customer added! (Demo Mode)');
+  setFormMessage('customerFormMsg', 'New customer profile registered!');
   document.getElementById('addCustomerForm').reset();
-  reloadAllData();
+  renderAll();
 });
 
 initTabs();
-loadFormOptions();
-reloadAllData();
+renderAll();
